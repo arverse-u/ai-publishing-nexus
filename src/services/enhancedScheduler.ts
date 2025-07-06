@@ -3,7 +3,7 @@ import { platformAPI } from './platformApi';
 import { contentGenerator } from './contentGenerator';
 import { notificationService } from './notificationService';
 import { analyticsService } from './analyticsService';
-import { toIST, fromIST, getCurrentIST, getISTDayBoundsUTC, getNextOccurrenceIST, getCurrentISTTimestamp } from '@/utils/timeUtils';
+import { toIST, fromIST, getCurrentIST, getISTDayBoundsUTC, getNextOccurrenceIST, getCurrentISTTimestamp, getCurrentISTDayOfWeek } from '@/utils/timeUtils';
 import { jobQueue } from './jobQueue';
 import { platformCircuitBreaker } from './circuitBreaker';
 import { globalRateLimiter } from './rateLimiter';
@@ -327,7 +327,7 @@ export class EnhancedScheduler {
     if (!schedule.is_active) return false;
     
     const istNow = getCurrentIST();
-    const currentDayOfWeek = istNow.getDay();
+    const currentDayOfWeek = getCurrentISTDayOfWeek();
     const daysOfWeek = Array.isArray(schedule.days_of_week) ? schedule.days_of_week : [];
     
     console.log(`Checking schedule relevance for ${schedule.platform_name}:`);
@@ -408,7 +408,7 @@ export class EnhancedScheduler {
 
       // Get current IST date and day
       const istNow = getCurrentIST();
-      const currentDayOfWeek = istNow.getDay();
+      const currentDayOfWeek = getCurrentISTDayOfWeek();
 
       console.log(`📅 Current IST time: ${istNow.toLocaleString('en-IN')}`);
       console.log(`📅 Current day of week: ${currentDayOfWeek}`);

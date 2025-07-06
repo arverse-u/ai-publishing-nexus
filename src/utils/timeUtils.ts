@@ -14,10 +14,10 @@ export function toIST(utcDate: Date): Date {
 
 // Get current time in IST using proper timezone
 export function getCurrentIST(): Date {
-  // Create a date in IST timezone
+  // Get current UTC time and add IST offset (+5:30)
   const now = new Date();
-  const istString = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-  return new Date(istString);
+  const istOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in milliseconds
+  return new Date(now.getTime() + istOffset);
 }
 
 // Format IST time for display - always show IST time in 24-hour format
@@ -88,7 +88,7 @@ export function getNextOccurrenceIST(timeString: string, daysOfWeek: number[]): 
   const todayScheduled = new Date(istNow);
   todayScheduled.setHours(hours, minutes, 0, 0);
   
-  const currentDayOfWeek = istNow.getDay();
+  const currentDayOfWeek = getCurrentISTDayOfWeek();
   
   // If time hasn't passed today and today is in the schedule
   if (todayScheduled > istNow && daysOfWeek.includes(currentDayOfWeek)) {
@@ -185,4 +185,10 @@ export function getCurrentISTDateString(): string {
     month: '2-digit',
     day: '2-digit'
   });
+}
+
+// Get current IST day of week (0=Sunday, 1=Monday, etc.)
+export function getCurrentISTDayOfWeek(): number {
+  const istNow = getCurrentIST();
+  return istNow.getDay();
 }
