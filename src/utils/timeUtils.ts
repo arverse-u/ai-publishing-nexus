@@ -1,0 +1,103 @@
+
+// Convert IST date to UTC
+export function fromIST(istDate: Date): Date {
+  // IST is UTC+5:30
+  const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
+  return utcDate;
+}
+
+// Convert UTC date to IST
+export function toIST(utcDate: Date): Date {
+  // IST is UTC+5:30
+  const istDate = new Date(utcDate.getTime() + (5.5 * 60 * 60 * 1000));
+  return istDate;
+}
+
+// Get current time in IST
+export function getCurrentIST(): Date {
+  return toIST(new Date());
+}
+
+// Format IST time for display - always show IST time
+export function formatISTTime(utcTime: string | Date, options?: Intl.DateTimeFormatOptions): string {
+  const date = typeof utcTime === 'string' ? new Date(utcTime) : utcTime;
+  const istDate = toIST(date);
+  
+  const defaultOptions: Intl.DateTimeFormatOptions = {
+    timeZone: 'Asia/Kolkata', // Use proper IST timezone
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  };
+  
+  const formatOptions = { ...defaultOptions, ...options };
+  return istDate.toLocaleString('en-IN', formatOptions);
+}
+
+// Get current IST time formatted for display
+export function getCurrentISTFormatted(): string {
+  return formatISTTime(getCurrentIST());
+}
+
+export function getISTDayBoundsUTC(date?: Date): { startUTC: Date; endUTC: Date } {
+  const targetDate = date || getCurrentIST();
+  
+  // Create start of day in IST (00:00:00)
+  const startIST = new Date(targetDate);
+  startIST.setHours(0, 0, 0, 0);
+  
+  // Create end of day in IST (23:59:59.999)
+  const endIST = new Date(targetDate);
+  endIST.setHours(23, 59, 59, 999);
+  
+  // Convert to UTC
+  const startUTC = fromIST(startIST);
+  const endUTC = fromIST(endIST);
+  
+  return { startUTC, endUTC };
+}
+
+// Helper to check if a time string matches current IST hour/minute
+export function isTimeInCurrentISTHour(timeString: string): boolean {
+  const istNow = getCurrentIST();
+  const [hours, minutes] = timeString.split(':').map(Number);
+  
+  return istNow.getHours() === hours && Math.abs(istNow.getMinutes() - minutes) <= 5;
+}
+
+// Helper to get next occurrence of a time in IST
+export function getNextOccurrenceIST(timeString: string, daysOfWeek: number[]): Date {
+  const istNow = getCurrentIST();
+  const [hours, minutes] = timeString.split(':').map(Number);
+  
+  // Try today first
+  const todayScheduled = new Date(istNow);
+  todayScheduled.setHours(hours, minutes, 0, 0);
+  
+  const currentDayOfWeek = istNow.getDay();
+  
+  // If time hasn't passed today and today is in the schedule
+  if (todayScheduled > istNow && daysOfWeek.includes(currentDayOfWeek)) {
+    return todayScheduled;
+  }
+  
+  // Find next day in the schedule
+  for (let i = 1; i <= 7; i++) {
+    const checkDay = (currentDayOfWeek + i) % 7;
+    if (daysOfWeek.includes(checkDay)) {
+      const nextDate = new Date(istNow);
+      nextDate.setDate(nextDate.getDate() + i);
+      nextDate.setHours(hours, minutes, 0, 0);
+      return nextDate;
+    }
+  }
+  
+  // Fallback to tomorrow
+  const tomorrow = new Date(istNow);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(hours, minutes, 0, 0);
+  return tomorrow;
+}
