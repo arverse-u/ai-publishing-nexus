@@ -3,7 +3,7 @@ import { platformAPI } from './platformApi';
 import { contentGenerator } from './contentGenerator';
 import { notificationService } from './notificationService';
 import { analyticsService } from './analyticsService';
-import { toIST, fromIST, getCurrentIST, getISTDayBoundsUTC, getNextOccurrenceIST } from '@/utils/timeUtils';
+import { toIST, fromIST, getCurrentIST, getISTDayBoundsUTC, getNextOccurrenceIST, getCurrentISTTimestamp } from '@/utils/timeUtils';
 import { jobQueue } from './jobQueue';
 import { platformCircuitBreaker } from './circuitBreaker';
 import { globalRateLimiter } from './rateLimiter';
@@ -63,7 +63,7 @@ export class EnhancedScheduler {
       type: 'info',
       title: 'Enhanced Scheduler Started',
       message: 'Production-ready autonomous content scheduling is now active',
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentISTTimestamp()
     });
   }
 
@@ -107,7 +107,8 @@ export class EnhancedScheduler {
     
     // Calculate next midnight content generation window (12:00-1:00 AM IST)
     const nextMidnight = new Date(istNow);
-    nextMidnight.setHours(24, 0, 0, 0); // Next day 00:00 IST
+    nextMidnight.setDate(nextMidnight.getDate() + 1); // Move to next day
+    nextMidnight.setHours(0, 0, 0, 0); // Set to 00:00 IST
     
     // Add random delay between 0-59 minutes to spread load
     const randomMinutes = Math.floor(Math.random() * 60);
@@ -174,7 +175,7 @@ export class EnhancedScheduler {
         type: 'success',
         title: 'Content Generated',
         message: 'Daily content generation completed successfully',
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentISTTimestamp()
       });
     } catch (error) {
       console.error('❌ Failed to generate content:', error);
@@ -183,7 +184,7 @@ export class EnhancedScheduler {
         type: 'error',
         title: 'Content Generation Failed',
         message: 'Daily content generation encountered an error',
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentISTTimestamp()
       });
     }
   }
@@ -230,7 +231,7 @@ export class EnhancedScheduler {
         type: 'success',
         title: 'Analytics Updated',
         message: `Analytics retrieved for ${posts?.length || 0} posts`,
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentISTTimestamp()
       });
     } catch (error) {
       console.error('❌ Failed to retrieve analytics:', error);
@@ -239,7 +240,7 @@ export class EnhancedScheduler {
         type: 'error',
         title: 'Analytics Retrieval Failed',
         message: 'Daily analytics retrieval encountered an error',
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentISTTimestamp()
       });
     }
   }
@@ -311,7 +312,7 @@ export class EnhancedScheduler {
           type: 'content_generation',
           priority: 'high',
           payload: { scheduleId: schedule.id, immediate: true, todayOnly: true },
-          scheduledTime: new Date(),
+          scheduledTime: getCurrentIST(),
           maxRetries: 3,
           userId: schedule.user_id,
           platform: schedule.platform_name
@@ -355,7 +356,7 @@ export class EnhancedScheduler {
         type: 'content_posting',
         priority: 'medium',
         payload: { postId: post.id },
-        scheduledTime: new Date(post.scheduled_for!),
+        scheduledTime: getCurrentIST(),
         maxRetries: 5,
         userId: post.user_id,
         platform: post.platform_name
@@ -381,7 +382,7 @@ export class EnhancedScheduler {
             type: 'content_posting',
             priority: 'medium',
             payload: { postId: post.id },
-            scheduledTime: new Date(post.scheduled_for!),
+            scheduledTime: getCurrentIST(),
             maxRetries: 5,
             userId: post.user_id,
             platform: post.platform_name
@@ -675,7 +676,7 @@ export class EnhancedScheduler {
       isRunning: this.isRunning,
       ...summary,
       realTimeConnected: this.realtimeChannel !== null,
-      lastUpdate: new Date(),
+      lastUpdate: getCurrentIST(),
       nextContentGeneration: this.midnightContentGeneration ? 'Scheduled' : 'Not scheduled',
       nextAnalyticsRetrieval: this.analyticsRetrievalScheduler ? 'Scheduled' : 'Not scheduled',
       lastContentGenerationDate: this.lastContentGenerationDate,

@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { jobQueue } from './jobQueue';
 import { platformCircuitBreaker } from './circuitBreaker';
 import { globalRateLimiter } from './rateLimiter';
+import { getCurrentIST } from '@/utils/timeUtils';
 
 interface MetricEntry {
   timestamp: Date;
@@ -19,7 +20,7 @@ interface HealthStatus {
 
 export class SchedulerMonitor {
   private metrics: MetricEntry[] = [];
-  private startTime = Date.now();
+  private startTime = getCurrentIST().getTime();
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isMonitoring = false;
 
@@ -55,7 +56,7 @@ export class SchedulerMonitor {
       this.recordMetric('jobs.completed', 1, {
         type: data.job.type,
         platform: data.job.platform,
-        duration: Date.now() - data.job.updatedAt.getTime()
+        duration: getCurrentIST().getTime() - data.job.updatedAt.getTime()
       });
     });
 
@@ -79,7 +80,7 @@ export class SchedulerMonitor {
   }
 
   private collectMetrics() {
-    const now = new Date();
+    const now = getCurrentIST().getTime();
     
     // Job queue metrics
     const jobStats = jobQueue.getStats();
@@ -102,13 +103,13 @@ export class SchedulerMonitor {
     this.recordMetric('ratelimit.avg_usage', rateLimitStats.avgUsage);
 
     // System metrics
-    this.recordMetric('system.uptime', Date.now() - this.startTime);
+    this.recordMetric('system.uptime', getCurrentIST().getTime() - this.startTime);
     this.recordMetric('system.memory_usage', process.memoryUsage?.().heapUsed || 0);
   }
 
   private async performHealthChecks(): Promise<HealthStatus> {
     const checks: Record<string, { status: 'pass' | 'fail'; message: string; timestamp: Date }> = {};
-    const now = new Date();
+    const now = getCurrentIST().getTime();
 
     // Check job queue health
     const jobStats = jobQueue.getStats();
@@ -116,7 +117,7 @@ export class SchedulerMonitor {
     checks.jobQueue = {
       status: failureRate < 0.1 ? 'pass' : 'fail',
       message: `Failure rate: ${(failureRate * 100).toFixed(1)}%`,
-      timestamp: now
+      timestamp: new Date(now)
     };
 
     // Check database connectivity
@@ -125,13 +126,13 @@ export class SchedulerMonitor {
       checks.database = {
         status: error ? 'fail' : 'pass',
         message: error ? `Database error: ${error.message}` : 'Database connected',
-        timestamp: now
+        timestamp: new Date(now)
       };
     } catch (error) {
       checks.database = {
         status: 'fail',
         message: `Database connection failed: ${(error as Error).message}`,
-        timestamp: now
+        timestamp: new Date(now)
       };
     }
 
@@ -143,7 +144,7 @@ export class SchedulerMonitor {
       message: unhealthyCircuits.length === 0 
         ? 'All circuits healthy' 
         : `${unhealthyCircuits.length} unhealthy circuits: ${unhealthyCircuits.map(([key]) => key).join(', ')}`,
-      timestamp: now
+      timestamp: new Date(now)
     };
 
     // Overall health status
@@ -155,8 +156,8 @@ export class SchedulerMonitor {
     const healthStatus: HealthStatus = {
       status,
       checks,
-      uptime: Date.now() - this.startTime,
-      lastCheck: now
+      uptime: getCurrentIST().getTime() - this.startTime,
+      lastCheck: new Date(now)
     };
 
     // Log health status if degraded or unhealthy
@@ -171,7 +172,7 @@ export class SchedulerMonitor {
 
   recordMetric(metric: string, value: number, metadata?: Record<string, any>) {
     this.metrics.push({
-      timestamp: new Date(),
+      timestamp: new Date(getCurrentIST().getTime()),
       metric,
       value,
       metadata
@@ -187,7 +188,7 @@ export class SchedulerMonitor {
     }
     
     if (since) {
-      filtered = filtered.filter(m => m.timestamp >= since);
+      filtered = filtered.filter(m => m.timestamp.getTime() >= since.getTime());
     }
     
     return filtered.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
@@ -216,7 +217,7 @@ export class SchedulerMonitor {
   }
 
   // Get success rates by platform
-  getSuccessRates(since: Date = new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+  getSuccessRates(since: Date = new Date(getCurrentIST().getTime() - 24 * 60 * 60 * 1000)) {
     const completed = this.getMetrics('jobs.completed', since);
     const failed = this.getMetrics('jobs.failed', since);
     
@@ -244,9 +245,9 @@ export class SchedulerMonitor {
 
   private cleanupOldMetrics() {
     // Keep metrics for 24 hours
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const cutoff = new Date(getCurrentIST().getTime() - 24 * 60 * 60 * 1000);
     const before = this.metrics.length;
-    this.metrics = this.metrics.filter(m => m.timestamp >= cutoff);
+    this.metrics = this.metrics.filter(m => m.timestamp.getTime() >= cutoff.getTime());
     const cleaned = before - this.metrics.length;
     
     if (cleaned > 0) {
@@ -256,11 +257,11 @@ export class SchedulerMonitor {
 
   // Get current system status summary
   getStatusSummary() {
-    const now = new Date();
-    const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const now = getCurrentIST().getTime();
+    const last24h = new Date(now - 24 * 60 * 60 * 1000);
     
     return {
-      uptime: Date.now() - this.startTime,
+      uptime: getCurrentIST().getTime() - this.startTime,
       jobQueue: jobQueue.getStats(),
       successRates: this.getSuccessRates(last24h),
       circuitBreakers: platformCircuitBreaker.getAllStatus(),

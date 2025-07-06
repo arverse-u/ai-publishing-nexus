@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getCurrentUTCTimestamp, getCurrentISTTimestamp } from '@/utils/timeUtils';
 
 export interface NotificationData {
   type: 'success' | 'error' | 'warning' | 'info';
@@ -89,7 +90,7 @@ export class NotificationService {
         .upsert({
           user_id: user.user.id,
           preferences: preferences as any, // Cast to Json type
-          updated_at: new Date().toISOString(),
+          updated_at: getCurrentUTCTimestamp(),
         });
 
       if (error) throw error;
@@ -187,7 +188,7 @@ export class NotificationService {
         action: data.action,
         category: data.category || 'system',
         priority: data.priority || 'medium',
-        created_at: data.timestamp,
+        created_at: getCurrentISTTimestamp(),
         read: false
       });
 
@@ -208,7 +209,7 @@ export class NotificationService {
       action: 'post_published',
       category: 'posting',
       priority: 'medium',
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentISTTimestamp()
     });
   }
 
@@ -221,7 +222,7 @@ export class NotificationService {
       action: 'post_failed',
       category: 'posting',
       priority: 'high',
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentISTTimestamp()
     });
   }
 
@@ -234,7 +235,7 @@ export class NotificationService {
       action: 'content_generated',
       category: 'posting',
       priority: 'low',
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentISTTimestamp()
     });
   }
 
@@ -247,7 +248,7 @@ export class NotificationService {
       action: 'rate_limit_warning',
       category: 'system',
       priority: 'medium',
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentISTTimestamp()
     });
   }
 
@@ -260,7 +261,7 @@ export class NotificationService {
       action: 'daily_limit_reached',
       category: 'posting',
       priority: 'medium',
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentISTTimestamp()
     });
   }
 
@@ -272,7 +273,7 @@ export class NotificationService {
       action: 'scheduling_error',
       category: 'scheduling',
       priority: 'high',
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentISTTimestamp()
     });
   }
 
@@ -284,7 +285,7 @@ export class NotificationService {
       action: 'analytics_updated',
       category: 'analytics',
       priority: 'low',
-      timestamp: new Date().toISOString()
+      timestamp: getCurrentISTTimestamp()
     });
   }
 

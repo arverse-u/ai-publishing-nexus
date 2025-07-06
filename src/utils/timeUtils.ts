@@ -1,4 +1,3 @@
-
 // Convert IST date to UTC
 export function fromIST(istDate: Date): Date {
   // IST is UTC+5:30
@@ -42,6 +41,7 @@ export function getCurrentISTFormatted(): string {
   return formatISTTime(getCurrentIST());
 }
 
+// Get IST day bounds in UTC for database queries
 export function getISTDayBoundsUTC(date?: Date): { startUTC: Date; endUTC: Date } {
   const targetDate = date || getCurrentIST();
   
@@ -100,4 +100,56 @@ export function getNextOccurrenceIST(timeString: string, daysOfWeek: number[]): 
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(hours, minutes, 0, 0);
   return tomorrow;
+}
+
+// Get current UTC timestamp for database operations
+export function getCurrentUTCTimestamp(): string {
+  return new Date().toISOString();
+}
+
+// Get current IST timestamp for database operations
+export function getCurrentISTTimestamp(): string {
+  return getCurrentIST().toISOString();
+}
+
+// Format relative time (e.g., "2 hours ago") with IST awareness
+export function formatRelativeTime(timestamp: string | Date): string {
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  
+  // For older dates, use IST formatting
+  return formatISTTime(timestamp, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}
+
+// Validate if a time string is in correct 24-hour format
+export function isValidTimeFormat(timeString: string): boolean {
+  const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  return timeRegex.test(timeString);
+}
+
+// Get next scheduled time with proper IST handling
+export function getNextScheduledTime(timeString: string, daysOfWeek: number[], addDays: number = 0): Date {
+  const istNow = getCurrentIST();
+  const [hours, minutes] = timeString.split(':').map(Number);
+  
+  const nextTime = new Date(istNow);
+  nextTime.setDate(nextTime.getDate() + addDays);
+  nextTime.setHours(hours, minutes, 0, 0);
+  
+  return nextTime;
 }

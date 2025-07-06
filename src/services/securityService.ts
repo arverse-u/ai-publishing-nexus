@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentISTTimestamp } from '@/utils/timeUtils';
 
 export interface SecurityEvent {
   eventType: string;
@@ -36,7 +36,7 @@ class SecurityService {
       eventType: success ? 'login_success' : 'login_failed',
       eventDetails: { 
         email: email ? this.maskEmail(email) : undefined,
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentISTTimestamp()
       }
     });
   }
@@ -47,7 +47,7 @@ class SecurityService {
       eventDetails: {
         api_type: apiType,
         action,
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentISTTimestamp()
       }
     });
   }
@@ -58,7 +58,7 @@ class SecurityService {
       eventDetails: {
         activity,
         ...details,
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentISTTimestamp()
       }
     });
   }

@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { notificationService } from './notificationService';
+import { getCurrentISTTimestamp } from '@/utils/timeUtils';
 
 export interface RecoveryStrategy {
   type: 'retry' | 'fallback' | 'manual' | 'skip';
@@ -203,7 +203,7 @@ class ErrorRecoveryService {
         message: error.message,
         context,
         attempt: attempt || 0,
-        timestamp: new Date().toISOString()
+        timestamp: getCurrentISTTimestamp()
       });
     } catch (logError) {
       console.error('Failed to log error:', logError);
@@ -215,7 +215,7 @@ class ErrorRecoveryService {
       type: 'error',
       title: 'Manual Intervention Required',
       message: `${context.operation} failed: ${error.message}. Please check your settings.`,
-      timestamp: new Date().toISOString(),
+      timestamp: getCurrentISTTimestamp(),
       category: 'system',
       priority: 'high'
     });
@@ -290,7 +290,7 @@ class ErrorRecoveryService {
           type: 'success',
           title: 'Posts Recovered',
           message: `Successfully recovered ${result.recovered} failed posts for retry`,
-          timestamp: new Date().toISOString()
+          timestamp: getCurrentISTTimestamp()
         });
       }
     } catch (error) {
