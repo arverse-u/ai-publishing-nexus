@@ -81,36 +81,52 @@ export function isTimeInCurrentISTHour(timeString: string): boolean {
 
 // Helper to get next occurrence of a time in IST
 export function getNextOccurrenceIST(timeString: string, daysOfWeek: number[]): Date {
-  const istNow = getCurrentIST();
-  const [hours, minutes] = timeString.split(':').map(Number);
-  
-  // Try today first
-  const todayScheduled = new Date(istNow);
-  todayScheduled.setHours(hours, minutes, 0, 0);
-  
-  const currentDayOfWeek = getCurrentISTDayOfWeek();
-  
-  // If time hasn't passed today and today is in the schedule
-  if (todayScheduled > istNow && daysOfWeek.includes(currentDayOfWeek)) {
-    return todayScheduled;
-  }
-  
-  // Find next day in the schedule
-  for (let i = 1; i <= 7; i++) {
-    const checkDay = (currentDayOfWeek + i) % 7;
-    if (daysOfWeek.includes(checkDay)) {
-      const nextDate = new Date(istNow);
-      nextDate.setDate(nextDate.getDate() + i);
-      nextDate.setHours(hours, minutes, 0, 0);
-      return nextDate;
+  try {
+    const istNow = getCurrentIST();
+    const [hours, minutes] = timeString.split(':').map(Number);
+    
+    if (isNaN(hours) || isNaN(minutes)) {
+      console.error('Invalid time string:', timeString);
+      // Fallback to current time + 1 hour
+      const fallback = new Date(istNow);
+      fallback.setHours(fallback.getHours() + 1, 0, 0, 0);
+      return fallback;
     }
+    
+    // Try today first
+    const todayScheduled = new Date(istNow);
+    todayScheduled.setHours(hours, minutes, 0, 0);
+    
+    const currentDayOfWeek = getCurrentISTDayOfWeek();
+    
+    // If time hasn't passed today and today is in the schedule
+    if (todayScheduled > istNow && daysOfWeek.includes(currentDayOfWeek)) {
+      return todayScheduled;
+    }
+    
+    // Find next day in the schedule
+    for (let i = 1; i <= 7; i++) {
+      const checkDay = (currentDayOfWeek + i) % 7;
+      if (daysOfWeek.includes(checkDay)) {
+        const nextDate = new Date(istNow);
+        nextDate.setDate(nextDate.getDate() + i);
+        nextDate.setHours(hours, minutes, 0, 0);
+        return nextDate;
+      }
+    }
+    
+    // Fallback to tomorrow
+    const tomorrow = new Date(istNow);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(hours, minutes, 0, 0);
+    return tomorrow;
+  } catch (error) {
+    console.error('Error in getNextOccurrenceIST:', error);
+    // Return current time + 1 hour as fallback
+    const fallback = new Date();
+    fallback.setHours(fallback.getHours() + 1, 0, 0, 0);
+    return fallback;
   }
-  
-  // Fallback to tomorrow
-  const tomorrow = new Date(istNow);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(hours, minutes, 0, 0);
-  return tomorrow;
 }
 
 // Get current UTC timestamp for database operations

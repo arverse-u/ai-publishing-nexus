@@ -35,20 +35,34 @@ export class ContentGenerator {
   }
 
   async generateContent(platform: string, contentType: string): Promise<GeneratedContent> {
-    const settings = await this.getAISettings();
-    
-    const prompt = this.buildPrompt(platform, contentType, settings);
+    console.log(`🎯 Starting content generation for ${platform} with topic: ${contentType}`);
     
     try {
+      const settings = await this.getAISettings();
+      console.log(`⚙️ Using AI settings:`, { tone: settings.tone, audience: settings.target_audience });
+      
+      const prompt = this.buildPrompt(platform, contentType, settings);
+      console.log(`📝 Built prompt for ${platform}`);
+      
       const content = await this.callAIAPI(prompt, settings);
+      console.log(`🤖 AI content generated successfully for ${platform}`);
       
       // Generate enhanced platform-specific media
       let mediaUrl = '';
       if (this.needsImageGeneration(platform)) {
-        mediaUrl = await this.generateEnhancedPlatformImage(content.title || content.body.substring(0, 100), platform, contentType);
+        console.log(`🖼️ Generating image for ${platform}`);
+        try {
+          mediaUrl = await this.generateEnhancedPlatformImage(content.title || content.body.substring(0, 100), platform, contentType);
+          if (mediaUrl) {
+            console.log(`✅ Image generated successfully for ${platform}`);
+          }
+        } catch (imageError) {
+          console.warn(`⚠️ Image generation failed for ${platform}:`, imageError);
+          // Continue without image
+        }
       }
       
-      return {
+      const result = {
         title: content.title,
         content: content.body,
         type: this.getContentType(platform),
@@ -56,10 +70,86 @@ export class ContentGenerator {
         tags: content.tags,
         mediaUrl,
       };
+
+      console.log(`✅ Content generation completed for ${platform}`);
+      return result;
+      
     } catch (error) {
-      console.error('AI content generation failed:', error);
-      throw new Error(`Failed to generate content for ${platform}: ${error.message}`);
+      console.error(`❌ AI content generation failed for ${platform}:`, error);
+      
+      // Fallback content generation
+      console.log(`🔄 Using fallback content for ${platform}`);
+      return this.generateFallbackContent(platform, contentType);
     }
+  }
+
+  private generateFallbackContent(platform: string, contentType: string): GeneratedContent {
+    const fallbackContent = {
+      hashnode: {
+        title: `Understanding ${contentType}: A Developer's Guide`,
+        content: `# Understanding ${contentType}
+
+As developers, understanding ${contentType} is crucial for building modern applications. Here's what you need to know:
+
+## Key Concepts
+
+${contentType} plays a vital role in today's development landscape. Whether you're building web applications, mobile apps, or working with data, having a solid grasp of these concepts will help you make better decisions.
+
+## Best Practices
+
+1. **Start with the basics** - Understanding fundamentals is key
+2. **Practice regularly** - Consistent practice leads to mastery
+3. **Stay updated** - Technology evolves rapidly
+4. **Build projects** - Apply what you learn in real scenarios
+
+## Conclusion
+
+${contentType} is an essential skill for modern developers. Keep learning, keep building, and stay curious!`,
+        tags: [contentType.toLowerCase(), 'development', 'programming', 'tutorial']
+      },
+      devto: {
+        title: `Getting Started with ${contentType}`,
+        content: `# Getting Started with ${contentType}
+
+${contentType} is becoming increasingly important in modern development. Let's dive into the essentials.
+
+## What is ${contentType}?
+
+${contentType} represents a key concept that every developer should understand. It's used across various domains and can significantly impact your development workflow.
+
+## Why Should You Care?
+
+- **Industry Relevance**: High demand in the job market
+- **Practical Applications**: Used in real-world projects
+- **Career Growth**: Essential for advancing as a developer
+
+## Quick Start Guide
+
+1. Learn the fundamentals
+2. Practice with small projects
+3. Build something meaningful
+4. Share your knowledge
+
+Ready to get started? The journey begins now!`,
+        tags: [contentType.toLowerCase(), 'webdev', 'tutorial', 'beginners']
+      },
+      default: {
+        title: `Exploring ${contentType}`,
+        content: `${contentType} is a fascinating topic that deserves attention. Whether you're just starting out or looking to deepen your understanding, there's always something new to discover. Let's explore the key concepts and practical applications that make ${contentType} so valuable in today's development landscape.`,
+        tags: [contentType.toLowerCase(), 'development', 'learning']
+      }
+    };
+
+    const content = fallbackContent[platform as keyof typeof fallbackContent] || fallbackContent.default;
+    
+    return {
+      title: content.title,
+      content: content.content,
+      type: this.getContentType(platform),
+      platform,
+      tags: content.tags,
+      mediaUrl: ''
+    };
   }
 
   private needsImageGeneration(platform: string): boolean {
@@ -325,29 +415,36 @@ Format: Return ONLY valid JSON:
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) throw new Error('Not authenticated');
 
-    console.log('Calling AI API for content generation...');
+    console.log('🤖 Calling AI API for content generation...');
 
-    // Try to call the edge function for AI generation
-    const { data, error } = await supabase.functions.invoke('generate-content', {
-      body: { 
-        prompt, 
-        settings,
-        model: this.selectBestModel(settings.active_models || ['rapidapi-gpt4']),
-        userId: user.user.id
+    try {
+      // Try to call the edge function for AI generation
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: { 
+          prompt, 
+          settings,
+          model: this.selectBestModel(settings.active_models || ['rapidapi-gpt4']),
+          userId: user.user.id
+        }
+      });
+
+      if (error) {
+        console.error('❌ AI edge function failed:', error);
+        throw new Error(`AI generation failed: ${error.message}`);
       }
-    });
 
-    if (error) {
-      console.error('AI edge function failed:', error);
-      throw new Error(`AI generation failed: ${error.message}`);
+      if (!data || !data.title || !data.body) {
+        console.error('❌ Invalid AI response:', data);
+        throw new Error('AI returned invalid response format');
+      }
+
+      console.log('✅ AI API call successful');
+      return data;
+      
+    } catch (error) {
+      console.error('❌ AI API call failed:', error);
+      throw error;
     }
-
-    if (!data || !data.title || !data.body) {
-      console.error('Invalid AI response:', data);
-      throw new Error('AI returned invalid response format');
-    }
-
-    return data;
   }
 
   private selectBestModel(activeModels: string[]): string {

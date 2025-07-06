@@ -27,6 +27,7 @@ export class EnhancedScheduler {
   private analyticsRetrievalScheduler: NodeJS.Timeout | null = null;
   private lastContentGenerationDate: string | null = null;
   private lastAnalyticsRetrievalDate: string | null = null;
+  private contentGenerationInterval: NodeJS.Timeout | null = null;
 
   async start() {
     if (this.isRunning) {
@@ -48,6 +49,7 @@ export class EnhancedScheduler {
     await this.loadExistingPosts();
     
     // Immediately check and generate content for today
+    console.log('🎯 Generating initial content...');
     await this.generateContentForToday();
     
     // Schedule daily content generation (12-1 AM IST)
@@ -59,12 +61,20 @@ export class EnhancedScheduler {
     // Set up cleanup intervals
     this.setupCleanupIntervals();
 
+    // Set up periodic content generation check (every 30 minutes)
+    this.contentGenerationInterval = setInterval(() => {
+      console.log('⏰ Periodic content generation check...');
+      this.generateContentForToday();
+    }, 30 * 60 * 1000); // 30 minutes
+
     await notificationService.showNotification({
       type: 'info',
       title: 'Enhanced Scheduler Started',
       message: 'Production-ready autonomous content scheduling is now active',
       timestamp: getCurrentISTTimestamp()
     });
+
+    console.log('✅ Enhanced scheduler fully started and running');
   }
 
   async startAutonomousMode() {
@@ -95,6 +105,11 @@ export class EnhancedScheduler {
     if (this.analyticsRetrievalScheduler) {
       clearTimeout(this.analyticsRetrievalScheduler);
       this.analyticsRetrievalScheduler = null;
+    }
+
+    if (this.contentGenerationInterval) {
+      clearInterval(this.contentGenerationInterval);
+      this.contentGenerationInterval = null;
     }
     
     this.isRunning = false;
@@ -398,13 +413,15 @@ export class EnhancedScheduler {
 
   private async generateContentForToday() {
     try {
-      console.log('🎯 Generating content for today\'s schedules...');
+      console.log('🎯 Starting content generation for today...');
       
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) {
         console.log('❌ No authenticated user found');
         return;
       }
+
+      console.log('👤 User authenticated:', user.user.id);
 
       // Get current IST date and day
       const istNow = getCurrentIST();
@@ -448,18 +465,41 @@ export class EnhancedScheduler {
       console.log(`📋 Found ${todaySchedules.length} active schedules for today`);
 
       // Generate content for each platform that doesn't have content for today
+      let generatedCount = 0;
       for (const schedule of todaySchedules) {
-        const hasContent = await this.hasContentForToday(schedule.platform_name, schedule.user_id);
-        if (!hasContent) {
-          console.log(`📝 Generating content for ${schedule.platform_name}`);
-          await this.scheduleContentForPlatform(schedule);
-        } else {
-          console.log(`✅ ${schedule.platform_name} already has content for today`);
+        try {
+          const hasContent = await this.hasContentForToday(schedule.platform_name, schedule.user_id);
+          if (!hasContent) {
+            console.log(`📝 Generating content for ${schedule.platform_name}`);
+            await this.scheduleContentForPlatform(schedule);
+            generatedCount++;
+          } else {
+            console.log(`✅ ${schedule.platform_name} already has content for today`);
+          }
+        } catch (error) {
+          console.error(`❌ Error generating content for ${schedule.platform_name}:`, error);
         }
+      }
+
+      console.log(`✅ Content generation completed. Generated ${generatedCount} new posts.`);
+
+      if (generatedCount > 0) {
+        await notificationService.showNotification({
+          type: 'success',
+          title: 'Content Generated',
+          message: `Generated ${generatedCount} new posts for today`,
+          timestamp: getCurrentISTTimestamp()
+        });
       }
 
     } catch (error) {
       console.error('❌ Failed to generate content for today:', error);
+      await notificationService.showNotification({
+        type: 'error',
+        title: 'Content Generation Failed',
+        message: `Content generation failed: ${error.message}`,
+        timestamp: getCurrentISTTimestamp()
+      });
     }
   }
 
@@ -493,6 +533,8 @@ export class EnhancedScheduler {
 
   private async scheduleContentForPlatform(schedule: any) {
     try {
+      console.log(`🎯 Starting content generation for ${schedule.platform_name}`);
+
       // Get AI settings for topics
       const { data: aiSettings } = await supabase
         .from('ai_settings')
@@ -510,15 +552,18 @@ export class EnhancedScheduler {
         : ['09:00', '14:00', '18:00'];
 
       console.log(`📝 Scheduling content for ${schedule.platform_name}: ${maxPosts} posts at ${preferredTimes.join(', ')} IST`);
+      console.log(`🎯 Available topics: ${topics.join(', ')}`);
 
       // Generate content for today's time slots
       for (let i = 0; i < Math.min(maxPosts, preferredTimes.length); i++) {
         const randomTopic = topics[Math.floor(Math.random() * topics.length)];
-        console.log(`🎯 Generating content for ${schedule.platform_name} on topic: ${randomTopic}`);
+        console.log(`🎯 Generating content ${i + 1}/${maxPosts} for ${schedule.platform_name} on topic: ${randomTopic}`);
         
         try {
           // Generate content using the AI service
+          console.log(`🤖 Calling content generator for ${schedule.platform_name}`);
           const content = await contentGenerator.generateContent(schedule.platform_name, randomTopic);
+          console.log(`✅ Content generated successfully for ${schedule.platform_name}`);
 
           // Calculate posting time using the updated utility
           const scheduledTimeIST = getNextOccurrenceIST(preferredTimes[i], schedule.days_of_week);
@@ -545,14 +590,17 @@ export class EnhancedScheduler {
             continue;
           }
 
-          console.log(`✅ Content scheduled for ${schedule.platform_name} at ${scheduledTimeIST.toLocaleString('en-IN')} IST`);
+          console.log(`✅ Content ${i + 1} scheduled for ${schedule.platform_name} at ${scheduledTimeIST.toLocaleString('en-IN')} IST`);
 
         } catch (contentError) {
-          console.error(`❌ Failed to generate content for ${schedule.platform_name}:`, contentError);
+          console.error(`❌ Failed to generate content ${i + 1} for ${schedule.platform_name}:`, contentError);
         }
       }
+
+      console.log(`🎉 Completed content generation for ${schedule.platform_name}`);
     } catch (error) {
       console.error(`❌ Failed to schedule content for ${schedule.platform_name}:`, error);
+      throw error;
     }
   }
 
