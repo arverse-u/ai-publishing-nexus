@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +6,7 @@ import { Clock, Calendar, Zap, AlertCircle, RefreshCw, Activity, TrendingUp } fr
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { enhancedScheduler } from '@/services/enhancedScheduler';
-import { getCurrentIST, formatISTTime, getCurrentISTFormatted } from '@/utils/timeUtils';
+import { getCurrentIST, formatISTTime, getCurrentISTFormatted, getCurrentISTTimeString } from '@/utils/timeUtils';
 
 interface ScheduledPost {
   id: string;
@@ -25,7 +24,7 @@ export const ScheduleOverview = () => {
   const [isSchedulerActive, setIsSchedulerActive] = useState(false);
   const [schedulerStatus, setSchedulerStatus] = useState<any>({});
   const [healthStatus, setHealthStatus] = useState<any>({});
-  const [currentISTTime, setCurrentISTTime] = useState(getCurrentISTFormatted());
+  const [currentISTTime, setCurrentISTTime] = useState(getCurrentISTTimeString());
 
   useEffect(() => {
     if (user) {
@@ -34,7 +33,7 @@ export const ScheduleOverview = () => {
       
       // Update current time every second
       const timeInterval = setInterval(() => {
-        setCurrentISTTime(getCurrentISTFormatted());
+        setCurrentISTTime(getCurrentISTTimeString());
       }, 1000);
       
       // Check scheduler status every 30 seconds
