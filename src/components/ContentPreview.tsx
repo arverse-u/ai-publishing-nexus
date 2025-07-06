@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { contentGenerator } from '@/services/contentGenerator';
 import { notificationService } from '@/services/notificationService';
+import { formatISTTime } from '@/utils/timeUtils';
 
 interface ContentPost {
   id: string;
@@ -194,9 +194,7 @@ export const ContentPreview = () => {
       });
 
   const formatTimeIST = (utcTime: string) => {
-    const date = new Date(utcTime);
-    return date.toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
+    return formatISTTime(utcTime, {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',

@@ -10,6 +10,7 @@ import { Trash2, Plus, Edit, Calendar, Clock, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationService } from '@/services/notificationService';
+import { getCurrentISTFormatted } from '@/utils/timeUtils';
 
 interface Schedule {
   id: string;
@@ -249,14 +250,7 @@ export const ScheduleManager = () => {
   };
 
   const getCurrentISTTime = () => {
-    const now = new Date();
-    const istNow = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
-    return istNow.toLocaleString('en-IN', { 
-      timeZone: 'UTC', // Since we already converted to IST
-      dateStyle: 'medium',
-      timeStyle: 'medium',
-      hour12: false
-    });
+    return getCurrentISTFormatted();
   };
 
   const ScheduleForm = ({ isEdit = false, onSave, onCancel }: { 

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { contentGenerator } from './contentGenerator';
 import { platformAPI } from './platformApi';
+import { getCurrentIST } from '@/utils/timeUtils';
 
 interface Job {
   id: string;
@@ -60,8 +61,8 @@ export class JobQueue {
       id: jobId,
       retryCount: 0,
       status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: getCurrentIST(),
+      updatedAt: getCurrentIST()
     };
     
     this.jobs.set(jobId, newJob);
@@ -74,7 +75,7 @@ export class JobQueue {
   private async processJobs() {
     if (!this.isProcessing) return;
 
-    const now = new Date();
+    const now = getCurrentIST();
     const pendingJobs = Array.from(this.jobs.values())
       .filter(job => 
         job.status === 'pending' && 
@@ -156,13 +157,13 @@ export class JobQueue {
       
       updatedJob.scheduledTime = new Date(Date.now() + delay);
       updatedJob.status = 'pending';
-      updatedJob.updatedAt = new Date();
+      updatedJob.updatedAt = getCurrentIST();
       
       console.log(`🔄 Job ${job.id} will retry in ${Math.round(delay / 1000)}s (attempt ${updatedJob.retryCount}/${updatedJob.maxRetries})`);
       this.emit('job:retrying', { job: updatedJob, error, delay });
     } else {
       updatedJob.status = 'failed';
-      updatedJob.updatedAt = new Date();
+      updatedJob.updatedAt = getCurrentIST();
       
       console.error(`❌ Job ${job.id} failed permanently: ${error}`);
       this.emit('job:failed', { job: updatedJob, error });
@@ -236,7 +237,7 @@ export class JobQueue {
     const job = this.jobs.get(jobId);
     if (job) {
       job.status = status;
-      job.updatedAt = new Date();
+      job.updatedAt = getCurrentIST();
     }
   }
 

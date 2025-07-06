@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { securityService } from './securityService';
+import { getCurrentISTTimestamp } from '@/utils/timeUtils';
 
 export interface HealthStatus {
   overall: 'healthy' | 'degraded' | 'unhealthy';
@@ -63,7 +64,7 @@ class HealthMonitor {
         content: this.extractResult(content),
         security: this.extractResult(security)
       },
-      timestamp: new Date().toISOString(),
+      timestamp: getCurrentISTTimestamp(),
       uptime: Date.now() - this.startTime
     };
 

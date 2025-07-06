@@ -1,5 +1,5 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentISTTimestamp } from '@/utils/timeUtils';
 
 export interface PostContent {
   title: string;
@@ -65,7 +65,7 @@ export class PlatformAPI {
     // Update usage tracking
     const updatedCredentials = {
       ...credentials,
-      last_used: new Date().toISOString(),
+      last_used: getCurrentISTTimestamp(),
       connection_health: 'healthy' as const
     };
 
