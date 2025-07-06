@@ -12,33 +12,44 @@ export function toIST(utcDate: Date): Date {
   return istDate;
 }
 
-// Get current time in IST
+// Get current time in IST using proper timezone
 export function getCurrentIST(): Date {
-  return toIST(new Date());
+  // Create a date in IST timezone
+  const now = new Date();
+  const istString = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  return new Date(istString);
 }
 
-// Format IST time for display - always show IST time
-export function formatISTTime(utcTime: string | Date, options?: Intl.DateTimeFormatOptions): string {
-  const date = typeof utcTime === 'string' ? new Date(utcTime) : utcTime;
-  const istDate = toIST(date);
+// Format IST time for display - always show IST time in 24-hour format
+export function formatISTTime(date: string | Date, options?: Intl.DateTimeFormatOptions): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   
   const defaultOptions: Intl.DateTimeFormatOptions = {
-    timeZone: 'Asia/Kolkata', // Use proper IST timezone
+    timeZone: 'Asia/Kolkata',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false
+    hour12: false // Always use 24-hour format
   };
   
   const formatOptions = { ...defaultOptions, ...options };
-  return istDate.toLocaleString('en-IN', formatOptions);
+  return dateObj.toLocaleString('en-IN', formatOptions);
 }
 
-// Get current IST time formatted for display
+// Get current IST time formatted for display in 24-hour format
 export function getCurrentISTFormatted(): string {
-  return formatISTTime(getCurrentIST());
+  const now = new Date();
+  return now.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false // 24-hour format
+  });
 }
 
 // Get IST day bounds in UTC for database queries
@@ -53,7 +64,7 @@ export function getISTDayBoundsUTC(date?: Date): { startUTC: Date; endUTC: Date 
   const endIST = new Date(targetDate);
   endIST.setHours(23, 59, 59, 999);
   
-  // Convert to UTC
+  // Convert to UTC for database queries
   const startUTC = fromIST(startIST);
   const endUTC = fromIST(endIST);
   
@@ -126,13 +137,13 @@ export function formatRelativeTime(timestamp: string | Date): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   
-  // For older dates, use IST formatting
+  // For older dates, use IST formatting in 24-hour format
   return formatISTTime(timestamp, {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false
+    hour12: false // 24-hour format
   });
 }
 
@@ -152,4 +163,26 @@ export function getNextScheduledTime(timeString: string, daysOfWeek: number[], a
   nextTime.setHours(hours, minutes, 0, 0);
   
   return nextTime;
+}
+
+// Get current IST time as a simple string for display (24-hour format)
+export function getCurrentISTTimeString(): string {
+  const now = new Date();
+  return now.toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false // 24-hour format
+  });
+}
+
+// Get current IST date as a simple string for display
+export function getCurrentISTDateString(): string {
+  const now = new Date();
+  return now.toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
 }
